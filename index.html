@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebShield Scanner Dashboard</title>
+    <!-- Bootstrap 5 Dark Theme Styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050816;
+            color: #E2E8F0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar-custom {
+            background-color: #0A192F;
+            border-bottom: 2px solid #00E5FF;
+        }
+        .card-custom {
+            background-color: #0A192F;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+        }
+        .text-accent {
+            color: #00E5FF;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-custom py-3">
+        <div class="container">
+            <span class="navbar-brand h1 text-accent fw-bold">WebShield Compliance Auditor</span>
+        </div>
+    </nav>
+    
+    <div class="container my-5">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card card-custom p-4">
+                    <h5 class="text-accent">Submit Target for Passive Inspection</h5>
+                    <div class="input-group mt-3">
+                        <input type="text" id="targetUrl" class="form-control bg-dark text-white border-secondary" placeholder="https://example.com" aria-label="Target Endpoint">
+                        <button class="btn btn-info" type="button" onclick="startPassiveAudit()">Audit Endpoint</button>
+                    </div>
+                    <div class="text-warning mt-2 small">
+                        ⚠️ Notice: This application audits target headers and TLS configuration compliance via standard connections.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card card-custom p-4">
+                    <h5 class="text-accent">Audit Results</h5>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-dark table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Audit Item</th>
+                                    <th>Status</th>
+                                    <th>Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTableBody">
+                                <tr>
+                                    <td colspan="3" class="text-muted text-center">No active audit data presented. Run a scan to fetch details.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card card-custom p-4 text-center">
+                    <h5 class="text-accent">Audit History</h5>
+                    <ul id="historyList" class="list-group list-group-flush mt-3 text-start">
+                        <!-- Filled by JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function startPassiveAudit() {
+            const urlInput = document.getElementById('targetUrl').value;
+            if (!urlInput) {
+                alert("Please enter a target URL");
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlInput })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Audit complete! Score: ${data.overall_score}/100`);
+                    loadHistory();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail}`);
+                }
+            } catch (err) {
+                console.error("Audit request issue: ", err);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/v1/history');
+                const list = document.getElementById('historyList');
+                list.innerHTML = "";
+                if (response.ok) {
+                    const history = await response.json();
+                    history.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = "list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center";
+                        li.innerHTML = `<span>${item.target_url}</span> <span class="badge bg-primary">${item.score}</span>`;
+                        list.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                console.error("Could not fetch history: ", err);
+            }
+        }
+
+        window.onload = loadHistory;
+    </script>
+</body>
+</html>
